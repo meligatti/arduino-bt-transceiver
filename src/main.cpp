@@ -222,6 +222,7 @@ void printUserMessages(byte txState){
 
 bool connectToWiFiNetwork(void) {
     bool correctWiFiconnection = false;
+    //const char timeOutMsg[] = "WiFi connection Time Out"
     
     if (checkSSID()) {
         WiFi.begin(ssid, pass);
@@ -288,7 +289,7 @@ void checkRxData(byte txState) {
      
     switch (txState) {
       case PASS_INCOMING:
-        // Empty array
+        /*// Empty array
         if (ssid[0] == '\0') {
           Serial.println("Invalid ssid");
           ESP32_BT.println(errorMsg);
@@ -296,18 +297,20 @@ void checkRxData(byte txState) {
         } else {
           Serial.println("SSID received OK");
           ESP32_BT.println(okMsg);
-        }
+        }*/
+        ESP32_BT.println(String(ssid));
       break;
       
       case END_TRANSMISSION:
-        if (pass[0] == '\0') {
+        /*if (pass[0] == '\0') {
           Serial.println("Invalid pass");
           ESP32_BT.println(errorMsg);
           //
         } else {
           Serial.println("Password received OK");
           ESP32_BT.println(okMsg);
-        }
+        }*/
+        ESP32_BT.println(String(pass));
       break;
     }
 }
