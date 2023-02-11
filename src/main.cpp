@@ -20,8 +20,9 @@
 #define INIT_SEQ_NULL   4
 #define DATA_NULL_NUMBER    1   
 
-enum {NUL, CONTROL_CHAR, PRINTABLE_CHAR};
-enum {START_SEQUENCE, SSID_INCOMING, PASS_INCOMING, END_TRANSMISSION};
+enum charTypes {NUL, CONTROL_CHAR, PRINTABLE_CHAR};
+enum transmissionCycle {START_SEQUENCE, SSID_INCOMING, PASS_INCOMING, END_TRANSMISSION};
+enum BTCycle {START, IDLE, INCOMING_TX, CHECKING_WIFI, WIFI_CONNECTED, INVALID_WIFI, UNPAIR_DEVICE}; 
 
 #define STRING_SIZE 40 
 
@@ -29,6 +30,7 @@ enum {START_SEQUENCE, SSID_INCOMING, PASS_INCOMING, END_TRANSMISSION};
 #define HALF_SECOND int(SECOND/2)
 
 #define TIMEOUT_REP 30 
+#define DISCONNECT_REP 10
 
 
 char ssid[STRING_SIZE] = "";
@@ -49,6 +51,7 @@ void printWiFistatus(int);
 
 void setupBTdevice(void);
 bool pairBTDevice(void);
+bool disconnectDevice(BTCycle);
 
 bool connectToWiFiNetwork(void);
 bool checkSSID(void);
@@ -63,19 +66,59 @@ void setup() {
   // put your setup code here, to run once:
   initSerialTerm();
 
-  setupBTdevice();
+  //setupBTdevice();
 
-  if(pairBTDevice()) {
+/*   if(pairBTDevice()) {
       if(receiveBTstring()) {
           if(connectToWiFiNetwork()) {
               printLocalIPaddress();
           }
       }
-  } 
+  }  */
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
+    static byte btStatus = START;
+
+    switch (btStatus)
+    {
+        case START:
+            setupBTdevice();
+            btStatus = IDLE;
+            break;
+
+        case IDLE:
+            btStatus = pairBTDevice() ? INCOMING_TX : START;
+            break;
+
+        case INCOMING_TX:
+            if(receiveBTstring())
+                btStatus = CHECKING_WIFI;
+            break;
+        
+        case CHECKING_WIFI:
+            btStatus = connectToWiFiNetwork() ? WIFI_CONNECTED : INVALID_WIFI;
+
+        /*case WIFI_CONNECTED:
+            if (disconnectDevice(WIFI_CONNECTED))
+                btStatus = START; 
+            break;
+
+        case INVALID_WIFI:
+            if (disconnectDevice(INVALID_WIFI))
+                btStatus = START; 
+            break;*/
+
+        case WIFI_CONNECTED:
+        case INVALID_WIFI:
+            btStatus = START;
+            break;
+
+        default:
+            btStatus = START;
+            break;
+    }
 }
 
 void initSerialTerm(void) {
@@ -87,8 +130,12 @@ void setupBTdevice(void) {
     Serial.println("Waiting for pairing device");
 }
 
+
 bool pairBTDevice(void) {
-    //longTimer.start();
+    if (longTimer.repetitions < TIMEOUT_REP) {
+        longTimer.repeatReset();
+    }
+    
     bool pairSuccess = false;
     while(!ESP32_BT.available()) {
         if (longTimer.repeat(TIMEOUT_REP)) {
@@ -109,7 +156,6 @@ bool pairBTDevice(void) {
     }
     return pairSuccess;
 }
-
 
 bool receiveBTstring(void) {
     bool strRXsuccess = false;
@@ -179,7 +225,7 @@ bool receiveBTstring(void) {
         strRXsuccess = false;
         Serial.println("Bluetooth connection timeout.");
     }
-    //ESP32_BT.end();
+    ESP32_BT.end();
     return strRXsuccess;
 }
 
@@ -320,6 +366,31 @@ void printLocalIPaddress(void) {
     Serial.println(WiFi.localIP());
 }
 
+bool disconnectDevice(BTCycle state) {
+    static Neotimer disconnectTimer = Neotimer(DISCONNECT_REP * SECOND);
+    if(!disconnectTimer.started())
+        disconnectTimer.start();
+        switch (state)
+        {
+        case WIFI_CONNECTED:
+            printLocalIPaddress();
+            break;
+        
+        case INVALID_WIFI:
+            Serial.println("Unable to connect to Wifi. Try again.");
+            break;
+
+        default:
+            Serial.print("Unexpected state ");
+            Serial.println(String(state));
+        }
+
+    if(disconnectTimer.done())
+        ESP32_BT.end();
+        Serial.println("ESP disconnected");
+
+    return disconnectTimer.done();
+}
 
 // Debugging Functions
 
