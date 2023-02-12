@@ -99,8 +99,9 @@ void loop() {
         
         case CHECKING_WIFI:
             btStatus = connectToWiFiNetwork() ? WIFI_CONNECTED : INVALID_WIFI;
+            break;
 
-        /*case WIFI_CONNECTED:
+        case WIFI_CONNECTED:
             if (disconnectDevice(WIFI_CONNECTED))
                 btStatus = START; 
             break;
@@ -108,12 +109,12 @@ void loop() {
         case INVALID_WIFI:
             if (disconnectDevice(INVALID_WIFI))
                 btStatus = START; 
-            break;*/
+            break;
 
-        case WIFI_CONNECTED:
+        /*case WIFI_CONNECTED:
         case INVALID_WIFI:
             btStatus = START;
-            break;
+            break;*/
 
         default:
             btStatus = START;
@@ -225,7 +226,7 @@ bool receiveBTstring(void) {
         strRXsuccess = false;
         Serial.println("Bluetooth connection timeout.");
     }
-    ESP32_BT.end();
+    //ESP32_BT.end();
     return strRXsuccess;
 }
 
@@ -373,7 +374,6 @@ bool disconnectDevice(BTCycle state) {
         switch (state)
         {
         case WIFI_CONNECTED:
-            printLocalIPaddress();
             break;
         
         case INVALID_WIFI:
